@@ -1,11 +1,14 @@
 use csv;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
+use std::collections::HashMap;
+
+use crate::util;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct CsvAllocationRow {
-    pub resourcce_id: String,
+    pub resource_id: String,
     pub resource_name: String,
     pub resource_manager: String,
     pub employment_type: String,
@@ -49,7 +52,7 @@ pub struct CsvAllocationRow {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct AllocationRow {
-    pub resourcce_id: String,
+    pub resource_id: String,
     pub resource_name: String,
     pub resource_manager: String,
     pub employment_type: String,
@@ -108,4 +111,155 @@ pub fn read_csv_allocations<T: DeserializeOwned>(
     }
 
     Ok(allocations)
+}
+
+pub fn convert_to_allocations(
+    rows: Vec<CsvAllocationRow>,
+) -> Result<Vec<AllocationRow>, Box<dyn std::error::Error>> {
+    rows.into_iter()
+        .map(|csv_row| convert_row(csv_row))
+        .collect()
+}
+
+pub fn forecast_utilization(
+    allocations: &Vec<AllocationRow>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Forecasting Utilization...");
+    // Implementation goes here
+    Ok(())
+}
+
+pub fn forecast_bench(allocations: &Vec<AllocationRow>) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Forecasting Bench...\n");
+    // Implementation goes here
+    let names = get_unique_names(allocations);
+    println!("Unique Resource Names ({}):", names.len());
+    Ok(())
+}
+
+struct WeeklyAllocations {
+    week0: f64,
+    week1: f64,
+    week2: f64,
+    week3: f64,
+    week4: f64,
+}
+
+pub fn forecast_overallocated(
+    allocations: &Vec<AllocationRow>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Forecasting Overallocated Resources...\n");
+    let names = get_unique_names(allocations);
+    let week0 = util::get_first_day_of_current_week();
+    let week1 = week0 + chrono::Duration::days(7);
+    let week2 = week1 + chrono::Duration::days(7);
+    let week3 = week2 + chrono::Duration::days(7);
+    let week4 = week3 + chrono::Duration::days(7);
+    println!(
+        "\n{:30}|{:>15}{:>15}{:>15}{:>15}{:>15}",
+        "Resource",
+        week0.to_string(),
+        week1.to_string(),
+        week2.to_string(),
+        week3.to_string(),
+        week4.to_string(),
+    );
+    println!(
+        "----------------------------------------------------------------------------------------------------------"
+    );
+    for name in names {
+        get_overallocated_resources(&name, &allocations);
+    }
+    println!("\n\n");
+    Ok(())
+}
+
+fn get_unique_names(allocations: &Vec<AllocationRow>) -> Vec<String> {
+    let mut unique_names = Vec::new();
+    for allocation in allocations {
+        if !unique_names.contains(&allocation.resource_name) {
+            unique_names.push(allocation.resource_name.clone());
+        }
+    }
+    unique_names.sort();
+    unique_names
+}
+
+fn convert_row(csv_row: CsvAllocationRow) -> Result<AllocationRow, Box<dyn std::error::Error>> {
+    Ok(AllocationRow {
+        resource_id: csv_row.resource_id,
+        resource_name: csv_row.resource_name,
+        resource_manager: csv_row.resource_manager,
+        employment_type: csv_row.employment_type,
+        investment_id: csv_row.investment_id,
+        investment_name: csv_row.investment_name,
+        investment_type: csv_row.investment_type,
+        investment_role: csv_row.investment_role,
+        investment_manager: csv_row.investment_manager,
+        allocation: csv_row.allocation,
+        a0: util::link_to_float(&csv_row.a0),
+        a1: util::link_to_float(&csv_row.a1),
+        a2: util::link_to_float(&csv_row.a2),
+        a3: util::link_to_float(&csv_row.a3),
+        a4: util::link_to_float(&csv_row.a4),
+        a5: util::link_to_float(&csv_row.a5),
+        a6: util::link_to_float(&csv_row.a6),
+        a7: util::link_to_float(&csv_row.a7),
+        a8: util::link_to_float(&csv_row.a8),
+        a9: util::link_to_float(&csv_row.a9),
+        a10: util::link_to_float(&csv_row.a10),
+        a11: util::link_to_float(&csv_row.a11),
+        a12: util::link_to_float(&csv_row.a12),
+        a13: util::link_to_float(&csv_row.a13),
+        hard_allocation: csv_row.hard_allocation,
+        h0: util::link_to_float(&csv_row.h0),
+        h1: util::link_to_float(&csv_row.h1),
+        h2: util::link_to_float(&csv_row.h2),
+        h3: util::link_to_float(&csv_row.h3),
+        h4: util::link_to_float(&csv_row.h4),
+        h5: util::link_to_float(&csv_row.h5),
+        h6: util::link_to_float(&csv_row.h6),
+        h7: util::link_to_float(&csv_row.h7),
+        h8: util::link_to_float(&csv_row.h8),
+        h9: util::link_to_float(&csv_row.h9),
+        h10: util::link_to_float(&csv_row.h10),
+        h11: util::link_to_float(&csv_row.h11),
+        h12: util::link_to_float(&csv_row.h12),
+        h13: util::link_to_float(&csv_row.h13),
+    })
+}
+
+fn get_overallocated_resources(name: &String, allocations: &Vec<AllocationRow>) {
+    let mut allocation_map: HashMap<String, WeeklyAllocations> = HashMap::new();
+    for allocation in allocations {
+        if &allocation.resource_name == name {
+            if allocation_map.get(name).is_none() {
+                allocation_map.insert(
+                    name.clone(),
+                    WeeklyAllocations {
+                        week0: allocation.a0,
+                        week1: allocation.a1,
+                        week2: allocation.a2,
+                        week3: allocation.a3,
+                        week4: allocation.a4,
+                    },
+                );
+            } else {
+                let entry = allocation_map.get_mut(name).unwrap();
+                entry.week0 += allocation.a0;
+                entry.week1 += allocation.a1;
+                entry.week2 += allocation.a2;
+                entry.week3 += allocation.a3;
+                entry.week4 += allocation.a4;
+            }
+        }
+    }
+    for (key, value) in allocation_map.iter() {
+        if value.week0 > 41.0 || value.week1 > 41.0 || value.week2 > 41.0 || value.week3 > 41.0 {
+            println!(
+                "{:<30}|{:>15.0}{:>15.0}{:>15.0}{:>15.0}{:>15.0}",
+                key, value.week0, value.week1, value.week2, value.week3, value.week4
+            );
+        }
+    }
 }

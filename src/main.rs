@@ -1,3 +1,4 @@
+use dialoguer::{Select, theme::ColorfulTheme};
 mod allocations;
 mod menus;
 mod util;
@@ -12,10 +13,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // Read and parse the CSV file
     let result = allocations::read_csv_allocations::<allocations::CsvAllocationRow>(&filepath);
+    let mut allocations: Vec<allocations::AllocationRow> = Vec::new();
     match result {
         Ok(rows) => {
             println!("\nSuccessfully read {} allocation rows...", rows.len());
-            // Further processing can be done here
+            println!("Cleaning data (removing links)...");
+            allocations = allocations::convert_to_allocations(rows)?;
+            println!("Converted {} links to allocations.", allocations.len() * 14);
         }
         Err(_) => {
             return Err(
@@ -24,7 +28,38 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             );
         }
     }
-    Ok(())
+    println!("Allocations: {}", allocations.len());
+
+    // Print the options menu
+    loop {
+        let selections = vec![
+            "Forecast Utilization",
+            "Forecast Bench",
+            "Show Overallocated",
+            "Exit",
+        ];
+        let selection = Select::with_theme(&ColorfulTheme::default())
+            .with_prompt("\n\nChoose an option")
+            .default(0)
+            .items(&selections)
+            .interact()?;
+        match selection {
+            0 => {
+                allocations::forecast_utilization(&allocations)?;
+            }
+            1 => {
+                allocations::forecast_bench(&allocations)?;
+            }
+            2 => {
+                allocations::forecast_overallocated(&allocations)?;
+            }
+            3 => {
+                println!("\n\nExiting...\n");
+                return Ok(());
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 fn main() {
