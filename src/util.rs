@@ -7,17 +7,15 @@ pub fn get_extension_from_filename(filename: &str) -> Option<&str> {
     Path::new(filename).extension().and_then(OsStr::to_str)
 }
 
-pub fn link_to_float(hyperlink: &str) -> f64 {
-    let Some(number) = extract_number(hyperlink) else {
-        return 0.0;
-    };
-    number
-}
-
-fn extract_number(hyperlink: &str) -> Option<f64> {
-    let re = Regex::new(r#",\s*""(\d+)""\)"#).unwrap();
-    let cap = re.captures(hyperlink)?;
-    cap.get(1)?.as_str().parse::<f64>().ok()
+pub fn extract_number(hyperlink: &str) -> f64 {
+    // match either ,""<hours>"" ) or ," <hours>" )
+    let re = Regex::new(r#",\s*"{1,2}(\d+(?:\.\d+)?)"{1,2}\)"#).unwrap();
+    if let Some(caps) = re.captures(hyperlink) {
+        let hours_str = &caps[1];
+        hours_str.parse::<f64>().unwrap_or(0.0)
+    } else {
+        0.0
+    }
 }
 
 pub fn get_first_day_of_current_week() -> NaiveDate {
