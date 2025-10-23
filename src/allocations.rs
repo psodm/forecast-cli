@@ -133,7 +133,17 @@ pub fn forecast_bench(allocations: &Vec<AllocationRow>) -> Result<(), Box<dyn st
     println!("Forecasting Bench...\n");
     // Implementation goes here
     let names = get_unique_names(allocations);
-    println!("Unique Resource Names ({}):", names.len());
+    let week0 = util::get_first_day_of_current_week();
+    let week1 = week0 + chrono::Duration::days(7);
+    let week2 = week1 + chrono::Duration::days(7);
+    let week3 = week2 + chrono::Duration::days(7);
+    let week4 = week3 + chrono::Duration::days(7);
+    println!("\n{:30}|{:>15}{:>15}{:>15}{:>15}{:>15}", "Resource", week0.to_string(), week1.to_string(), week2.to_string(), week3.to_string(), week4.to_string());
+    println!("----------------------------------------------------------------------------------------------------------");
+    for name in names {
+        get_benched_resources(&name, &allocations);
+    }
+    println!("\n");
     Ok(())
 }
 
@@ -260,6 +270,35 @@ fn get_overallocated_resources(name: &String, allocations: &Vec<AllocationRow>) 
                 "{:<30}|{:>15.0}{:>15.0}{:>15.0}{:>15.0}{:>15.0}",
                 key, value.week0, value.week1, value.week2, value.week3, value.week4
             );
+        }
+    }
+}
+
+fn get_benched_resources(name: &String, allocations: &Vec<AllocationRow>) {
+    let mut allocation_map: HashMap<String, WeeklyAllocations> = HashMap::new();
+    for allocation in allocations {
+        if &allocation.resource_name == name {
+            if allocation_map.get(name).is_none() {
+                allocation_map.insert(name.clone(), WeeklyAllocations{
+                    week0: allocation.a0,
+                    week1: allocation.a1,
+                    week2: allocation.a2,
+                    week3: allocation.a3,
+                    week4: allocation.a4,
+                });
+            } else {
+                let entry = allocation_map.get_mut(name).unwrap();
+                entry.week0 += allocation.a0;
+                entry.week1 += allocation.a1;
+                entry.week2 += allocation.a2;
+                entry.week3 += allocation.a3;
+                entry.week4 += allocation.a4;
+            }
+        }
+    }
+    for (key, value) in allocation_map.iter() {
+        if value.week0 < 40.0 || value.week1 < 40.0 || value.week2 < 40.0 || value.week3 < 40.0 {
+            println!("{:<30}|{:>15.0}{:>15.0}{:>15.0}{:>15.0}{:>15.0}", key, (40.0 - value.week0).abs(), (40.0 - value.week1).abs(), (40.0 - value.week2).abs(), (40.0 - value.week3).abs(), (40.0 - value.week4).abs());
         }
     }
 }
